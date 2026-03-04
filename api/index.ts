@@ -39,8 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error("[Vercel Handler Error]", err?.message || err, err?.stack);
     if (!res.headersSent) {
       res.status(500).json({
-        error: "A server error occurred. Please try again.",
-        debug: err?.message || String(err),
+        error: `[DEBUG] ${err?.message || String(err)}`,
       });
     }
   }
