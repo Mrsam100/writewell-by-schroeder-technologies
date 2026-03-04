@@ -1,6 +1,6 @@
 import { handle } from "hono/vercel";
-import app from "../server/app";
-import { ensureSchema } from "../server/db/migrate";
+import app from "./app";
+import { ensureSchema } from "./db/migrate";
 
 // Ensure DB schema on cold start (idempotent)
 let schemaReady: Promise<void> | null = null;
