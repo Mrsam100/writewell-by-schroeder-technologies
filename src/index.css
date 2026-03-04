@@ -1,0 +1,356 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-mono: "SF Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Nav ─────────────────────────────────────────── */
+.nav-pill {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.apple-nav-blur {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* ── Buttons ─────────────────────────────────────── */
+.pill-btn {
+  border-radius: 980px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill-btn:hover {
+  transform: translateY(-1px);
+}
+
+.pill-btn-lavender {
+  background-color: #d8b4fe;
+  color: #1a1a1a;
+}
+
+.pill-btn-lavender:hover {
+  background-color: #c084fc;
+}
+
+.pill-btn-outline {
+  background: transparent;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  color: #1a1a1a;
+}
+
+.pill-btn-outline:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.pill-btn-outline-cream {
+  background: transparent;
+  border: 1.5px solid rgba(252, 250, 242, 0.3);
+  color: #fcfaf2;
+}
+
+.pill-btn-outline-cream:hover {
+  background: rgba(252, 250, 242, 0.08);
+}
+
+.apple-button-blue {
+  background-color: #0071e3;
+  color: #fff;
+  border-radius: 980px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 400;
+  transition: all 0.3s ease;
+}
+
+.apple-button-blue:hover {
+  background-color: #0077ed;
+}
+
+/* ── Marquee ─────────────────────────────────────── */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  animation: marquee 30s linear infinite;
+  display: flex;
+  gap: 4rem;
+  width: max-content;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── Squiggle underline ──────────────────────────── */
+.squiggle-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.squiggle-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='12' viewBox='0 0 200 12'%3E%3Cpath d='M0 8 Q25 0 50 8 T100 8 T150 8 T200 8' stroke='%23d8b4fe' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x;
+  background-size: 200px 12px;
+}
+
+/* ── Scrollbar hide ──────────────────────────────── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Glassmorphism ───────────────────────────────── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+}
+
+/* ── Text reveal animation ───────────────────────── */
+.char-reveal {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(40px) rotateX(-40deg);
+  transform-origin: bottom center;
+}
+
+/* ── Magnetic button ─────────────────────────────── */
+.magnetic-btn {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Score bar animation ─────────────────────────── */
+@keyframes score-fill {
+  from { width: 0; }
+}
+
+.score-bar-fill {
+  animation: score-fill 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Float animation ─────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(2deg); }
+  66% { transform: translateY(5px) rotate(-1deg); }
+}
+
+.float-anim {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ── Diagonal cascade ────────────────────────────── */
+@keyframes cascade-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ── Footer ──────────────────────────────────────── */
+.apple-footer {
+  background-color: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.apple-link {
+  color: #06c;
+  text-decoration: none;
+}
+
+.apple-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Decorative lines ────────────────────────────── */
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+/* ── Snap scroll ─────────────────────────────────── */
+.snap-x {
+  scroll-snap-type: x mandatory;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* ── Counter ─────────────────────────────────────── */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Gradient text shimmer ──────────────────────── */
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.gradient-text-shimmer {
+  background: linear-gradient(90deg, #d8b4fe, #c084fc, #a855f7, #fb6340, #d8b4fe);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-x 4s ease infinite;
+}
+
+/* ── Glow effects ───────────────────────────────── */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(216, 180, 254, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(216, 180, 254, 0.3), 0 0 80px rgba(216, 180, 254, 0.1); }
+}
+
+.glow-lavender {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* ── Shimmer sweep on cards ─────────────────────── */
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-200%); }
+  100% { transform: translateX(200%); }
+}
+
+.shimmer-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+  animation: shimmer-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Floating particles ─────────────────────────── */
+@keyframes particle-rise {
+  0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.4; }
+  100% { transform: translateY(-600px) translateX(30px) scale(0.2); opacity: 0; }
+}
+
+@keyframes particle-drift {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  20% { opacity: 0.5; }
+  80% { opacity: 0.3; }
+  100% { transform: translateY(-400px) translateX(-40px); opacity: 0; }
+}
+
+/* ── Text blur reveal ───────────────────────────── */
+@keyframes text-blur-in {
+  from { filter: blur(12px); opacity: 0; transform: translateY(15px); }
+  to { filter: blur(0); opacity: 1; transform: translateY(0); }
+}
+
+/* ── 3D tilt on hover ───────────────────────────── */
+.tilt-hover {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+
+.tilt-hover:hover {
+  transform: perspective(800px) rotateX(2deg) rotateY(-3deg) translateY(-8px);
+}
+
+/* ── Border gradient glow ───────────────────────── */
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(216, 180, 254, 0.2); }
+  50% { border-color: rgba(216, 180, 254, 0.5); }
+}
+
+.border-glow-anim {
+  animation: border-glow 3s ease-in-out infinite;
+}
+
+/* ── Marquee reverse ────────────────────────────── */
+@keyframes marquee-reverse {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.marquee-track-reverse {
+  animation: marquee-reverse 25s linear infinite;
+  display: flex;
+  gap: 4rem;
+  width: max-content;
+}
+
+.marquee-track-reverse:hover {
+  animation-play-state: paused;
+}
+
+/* ── Sparkle ────────────────────────────────────── */
+@keyframes sparkle {
+  0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1) rotate(180deg); opacity: 1; }
+}
+
+/* ── Testimonial card active glow ───────────────── */
+.testimonial-active {
+  box-shadow: 0 25px 60px rgba(216, 180, 254, 0.15), 0 10px 30px rgba(0,0,0,0.05);
+}
+
+/* ── Snap center ────────────────────────────────── */
+.snap-center {
+  scroll-snap-align: center;
+}
+
+/* ── Wiggle ─────────────────────────────────────── */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(3deg); }
+  75% { transform: rotate(-3deg); }
+}
+
+/* ── Scale bounce ───────────────────────────────── */
+@keyframes scale-bounce {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
