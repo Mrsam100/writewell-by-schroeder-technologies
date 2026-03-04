@@ -176,8 +176,14 @@ async function findById(id) {
 
 // server/auth/password.ts
 var import_bcryptjs = __toESM(require("bcryptjs"));
-var BCRYPT_ROUNDS = 12;
-var _dummyHash = import_bcryptjs.default.hashSync("writewell-timing-safe-dummy-pw", BCRYPT_ROUNDS);
+var BCRYPT_ROUNDS = 10;
+var _dummyHash = null;
+function getDummyHash() {
+  if (!_dummyHash) {
+    _dummyHash = import_bcryptjs.default.hashSync("writewell-timing-safe-dummy-pw", BCRYPT_ROUNDS);
+  }
+  return _dummyHash;
+}
 async function hashPassword(password) {
   return import_bcryptjs.default.hash(password, BCRYPT_ROUNDS);
 }
@@ -186,7 +192,7 @@ async function verifyPassword(password, storedHash) {
   return import_bcryptjs.default.compare(password, storedHash);
 }
 async function dummyVerify(password) {
-  await import_bcryptjs.default.compare(password, _dummyHash);
+  await import_bcryptjs.default.compare(password, getDummyHash());
 }
 
 // server/auth/session.ts
