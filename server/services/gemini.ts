@@ -55,5 +55,9 @@ export async function analyseText(input: string) {
     [{ role: "user", content: analysisPrompt(input) }],
     true
   );
-  return JSON.parse(result || "{}");
+  try {
+    return JSON.parse(result || "{}");
+  } catch {
+    throw new Error("Failed to parse analysis response from AI model.");
+  }
 }
