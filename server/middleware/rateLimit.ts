@@ -1,37 +1,40 @@
-/** @license SPDX-License-Identifier: Apache-2.0 */
-import type { Request, Response, NextFunction } from "express";
+import { createMiddleware } from "hono/factory";
 import { config } from "../config";
 
 function createLimiter(windowMs: number, maxRequests: number) {
   const hits = new Map<string, { count: number; resetAt: number }>();
 
   // Cleanup every 5 minutes
-  setInterval(() => {
+  const timer = setInterval(() => {
     const now = Date.now();
     for (const [ip, entry] of hits) {
       if (entry.resetAt <= now) hits.delete(ip);
     }
-  }, 5 * 60_000).unref();
+  }, 5 * 60_000);
+  if (typeof timer === "object" && "unref" in timer) timer.unref();
 
-  return (req: Request, res: Response, next: NextFunction) => {
-    const ip = req.ip || req.socket.remoteAddress || "unknown";
+  return createMiddleware(async (c, next) => {
+    const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim()
+      || c.req.header("x-real-ip")
+      || "unknown";
     const now = Date.now();
     const entry = hits.get(ip);
 
     if (!entry || entry.resetAt <= now) {
       hits.set(ip, { count: 1, resetAt: now + windowMs });
-      return next();
+      await next();
+      return;
     }
 
     entry.count++;
     if (entry.count > maxRequests) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
-      res.setHeader("Retry-After", String(retryAfter));
-      return res.status(429).json({ error: "Too many requests. Please try again later." });
+      c.header("Retry-After", String(retryAfter));
+      return c.json({ error: "Too many requests. Please try again later." }, 429);
     }
 
-    next();
-  };
+    await next();
+  });
 }
 
 /** General API rate limit: 20 req/min */

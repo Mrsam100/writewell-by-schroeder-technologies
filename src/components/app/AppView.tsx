@@ -98,12 +98,8 @@ export const AppView = () => {
       };
       addToHistory(item, history);
     } catch (e: any) {
-      console.error(e);
-      let msg = "Failed to generate rewrite.";
-      if (e.message?.includes("API key")) msg = "Invalid API Key. Please check your configuration.";
-      else if (e.message?.includes("safety")) msg = "Content flagged by safety filters. Please try different text.";
-      else if (e.message?.includes("quota")) msg = "API quota exceeded. Please try again later.";
-      setError(msg);
+      console.error("[Rewrite Error]", e);
+      setError(e.message || "Failed to generate rewrite.");
       setOutput("");
     }
     setLoading(false);
@@ -123,10 +119,8 @@ export const AppView = () => {
       const result = await analyseText(input);
       setAnalysis(result);
     } catch (e: any) {
-      console.error(e);
-      let msg = "Analysis failed.";
-      if (e.message?.includes("JSON")) msg = "Model returned invalid analysis data. Please try again.";
-      setError(msg);
+      console.error("[Analysis Error]", e);
+      setError(e.message || "Analysis failed.");
       if (isModal) setShowAnalysisModal(false);
     }
     setAnalysing(false);

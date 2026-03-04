@@ -1,34 +1,29 @@
-/** @license SPDX-License-Identifier: Apache-2.0 */
-import { Router } from "express";
+import { Hono } from "hono";
+import type { AppEnv } from "../app";
 import { getHistory, deleteHistoryItem, clearHistory } from "../db/repositories/history";
 
-const router = Router();
+const historyRoutes = new Hono<AppEnv>();
 
-router.get("/", async (req, res, next) => {
-  try {
-    const userId = req.user!.userId;
-    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200);
-    const items = await getHistory(userId, limit);
-    res.json({ history: items });
-  } catch (err) { next(err); }
+historyRoutes.get("/", async (c) => {
+  const user = c.get("user")!;
+  const limitParam = c.req.query("limit");
+  const limit = Math.min(Math.max(parseInt(limitParam || "50") || 50, 1), 200);
+  const items = await getHistory(user.userId, limit);
+  return c.json({ history: items });
 });
 
-router.delete("/:id", async (req, res, next) => {
-  try {
-    const userId = req.user!.userId;
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const deleted = await deleteHistoryItem(id, userId);
-    res.json({ deleted });
-  } catch (err) { next(err); }
+historyRoutes.delete("/:id", async (c) => {
+  const user = c.get("user")!;
+  const id = parseInt(c.req.param("id"));
+  if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+  const deleted = await deleteHistoryItem(id, user.userId);
+  return c.json({ deleted });
 });
 
-router.delete("/", async (req, res, next) => {
-  try {
-    const userId = req.user!.userId;
-    const count = await clearHistory(userId);
-    res.json({ cleared: count });
-  } catch (err) { next(err); }
+historyRoutes.delete("/", async (c) => {
+  const user = c.get("user")!;
+  const count = await clearHistory(user.userId);
+  return c.json({ cleared: count });
 });
 
-export default router;
+export default historyRoutes;

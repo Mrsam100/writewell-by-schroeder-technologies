@@ -1,90 +1,87 @@
-/** @license SPDX-License-Identifier: Apache-2.0 */
-import { Router } from "express";
-import { rewriteText, analyseText } from "../services/gemini";
-import { validateRewrite, validateAnalyse } from "../middleware/validate";
+import { Hono } from "hono";
+import type { AppEnv } from "../app";
+import { rewriteText, analyseText } from "../services/openrouter";
+import { rewriteSchema, analyseSchema } from "../middleware/validate";
 import { addHistory } from "../db/repositories/history";
 import { logUsage } from "../db/repositories/usage";
-import { optionalAuth, authenticate } from "../middleware/auth";
-import historyRoutes from "./history";
-import settingsRoutes from "./settings";
+import { optionalAuth } from "../middleware/auth";
 
-const router = Router();
+const api = new Hono<AppEnv>();
 
-router.use("/history", authenticate, historyRoutes);
-router.use("/settings", authenticate, settingsRoutes);
+api.post("/rewrite", optionalAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = rewriteSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0].message }, 400);
+  }
 
-router.post("/rewrite", optionalAuth, validateRewrite, async (req, res, next) => {
-  try {
-    const { input, mode, intent, audience, platform, customVoice } = req.body;
-    const rewriteMode = mode || "CLARITY";
-    const rewritePlatform = platform || "General";
-    const rewriteIntent = intent || "Persuade";
-    const rewriteAudience = audience || "General Public";
-    const rewriteVoice = customVoice || "";
+  const { input, mode, intent, audience, platform, customVoice } = parsed.data;
 
-    const result = await rewriteText({
-      input,
-      mode: rewriteMode,
-      intent: rewriteIntent,
-      audience: rewriteAudience,
-      platform: rewritePlatform,
-      customVoice: rewriteVoice,
-    });
+  const result = await rewriteText({
+    input,
+    mode,
+    intent,
+    audience,
+    platform,
+    customVoice,
+  });
 
-    // Send response immediately — don't let DB failures block the user
-    res.json({ result });
-
-    // Fire-and-forget: save history + log usage
+  // Fire-and-forget: save history + log usage (don't block response)
+  const user = c.get("user");
+  Promise.resolve().then(async () => {
     try {
-      if (req.user) {
+      if (user) {
         await addHistory({
-          userId: req.user.userId,
+          userId: user.userId,
           input: input.substring(0, 200),
           inputFull: input,
           output: result,
-          mode: rewriteMode,
-          platform: rewritePlatform,
-          intent: rewriteIntent,
-          audience: rewriteAudience,
-          customVoice: rewriteVoice,
+          mode,
+          platform,
+          intent,
+          audience,
+          customVoice,
         });
       }
       await logUsage({
-        userId: req.user?.userId ?? null,
+        userId: user?.userId ?? null,
         action: "rewrite",
-        mode: rewriteMode,
-        platform: rewritePlatform,
+        mode,
+        platform,
         inputLength: input.length,
         outputLength: result.length,
       });
     } catch (dbErr) {
       console.error("[DB] Failed to log rewrite:", (dbErr as Error).message);
     }
-  } catch (err) {
-    next(err);
+  });
+
+  return c.json({ result });
+});
+
+api.post("/analyse", optionalAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = analyseSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0].message }, 400);
   }
+
+  const { input } = parsed.data;
+  const result = await analyseText(input);
+
+  // Fire-and-forget: log usage
+  const user = c.get("user");
+  logUsage({
+    userId: user?.userId ?? null,
+    action: "analyse",
+    inputLength: input.length,
+  }).catch((dbErr) => console.error("[DB] Failed to log analysis:", (dbErr as Error).message));
+
+  return c.json({ result });
 });
 
-router.post("/analyse", optionalAuth, validateAnalyse, async (req, res, next) => {
-  try {
-    const result = await analyseText(req.body.input);
-
-    // Send response immediately
-    res.json({ result });
-
-    // Fire-and-forget: log usage
-    logUsage({
-      userId: req.user?.userId ?? null,
-      action: "analyse",
-      inputLength: req.body.input.length,
-    }).catch(dbErr => console.error("[DB] Failed to log analysis:", (dbErr as Error).message));
-  } catch (err) {
-    next(err);
-  }
+api.get("/health", (c) => {
+  return c.json({ status: "ok", uptime: process.uptime() });
 });
 
-router.get("/health", (_req, res) => {
-  res.json({ status: "ok", uptime: process.uptime() });
-});
-
-export default router;
+export default api;

@@ -1,46 +1,63 @@
-/** @license SPDX-License-Identifier: Apache-2.0 */
-import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { config } from "../config";
+import { createMiddleware } from "hono/factory";
+import { getSessionCookie, clearSessionCookie, validateSession, cleanupExpiredSessions } from "../auth/session";
+import { ensureCsrfCookie } from "../auth/csrf";
+import { findById } from "../db/repositories/users";
 
 export interface AuthPayload {
   userId: number;
   email: string;
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthPayload;
-    }
+export const requireAuth = createMiddleware(async (c, next) => {
+  const sessionId = getSessionCookie(c);
+  if (!sessionId) {
+    ensureCsrfCookie(c);
+    return c.json({ error: "Authentication required." }, 401);
   }
-}
 
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Authentication required." });
+  const session = await validateSession(sessionId);
+  if (!session) {
+    // Clear the invalid/expired cookie so browser stops resending it
+    clearSessionCookie(c);
+    ensureCsrfCookie(c);
+    return c.json({ error: "Session expired. Please log in again." }, 401);
   }
-  try {
-    const token = header.slice(7);
-    const payload = jwt.verify(token, config.jwtSecret) as AuthPayload;
-    req.user = payload;
-    next();
-  } catch {
-    return res.status(401).json({ error: "Invalid or expired token." });
-  }
-};
 
-export const optionalAuth = (req: Request, _res: Response, next: NextFunction) => {
-  const header = req.headers.authorization;
-  if (header?.startsWith("Bearer ")) {
+  const user = await findById(session.userId);
+  if (!user) {
+    clearSessionCookie(c);
+    return c.json({ error: "User not found." }, 401);
+  }
+
+  c.set("user", { userId: user.id, email: user.email });
+
+  // Probabilistic session cleanup (~1% of authenticated requests)
+  if (Math.random() < 0.01) {
+    cleanupExpiredSessions().catch((err) =>
+      console.error("[Auth] Session cleanup failed:", err.message)
+    );
+  }
+
+  await next();
+});
+
+export const optionalAuth = createMiddleware(async (c, next) => {
+  const sessionId = getSessionCookie(c);
+  if (sessionId) {
     try {
-      const token = header.slice(7);
-      const payload = jwt.verify(token, config.jwtSecret) as AuthPayload;
-      req.user = payload;
+      const session = await validateSession(sessionId);
+      if (session) {
+        const user = await findById(session.userId);
+        if (user) {
+          c.set("user", { userId: user.id, email: user.email });
+        }
+      } else {
+        // Clear expired cookie silently
+        clearSessionCookie(c);
+      }
     } catch {
-      // Invalid token - continue without auth
+      // Invalid session -- continue without auth
     }
   }
-  next();
-};
+  await next();
+});

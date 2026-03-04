@@ -1,44 +1,54 @@
-/** @license SPDX-License-Identifier: Apache-2.0 */
-import { getSql } from "../index";
+import { eq } from "drizzle-orm";
+import { getDb } from "../index";
+import { settings } from "../schema";
 
-export interface SettingsRow {
-  user_id: number;
-  is_dark: boolean;
-  font_size: number;
-  default_mode: string;
-  default_intent: string;
-  default_audience: string;
-  default_platform: string;
+export async function getSettings(userId: number) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.userId, userId))
+    .limit(1);
+  return rows[0] || null;
 }
 
-export async function getSettings(userId: number): Promise<SettingsRow | null> {
-  const sql = getSql();
-  const rows = await sql`SELECT * FROM settings WHERE user_id = ${userId}`;
-  return (rows[0] as SettingsRow) || null;
-}
+export async function upsertSettings(
+  userId: number,
+  data: Record<string, unknown>
+) {
+  const db = getDb();
 
-export async function upsertSettings(userId: number, settings: Partial<Omit<SettingsRow, "user_id">>): Promise<SettingsRow> {
-  const sql = getSql();
+  const isDark = typeof data.is_dark === "boolean" ? data.is_dark : false;
+  const fontSize = Math.min(Math.max(typeof data.font_size === "number" ? data.font_size : 18, 10), 32);
+  const defaultMode = typeof data.default_mode === "string" ? data.default_mode : "CLARITY";
+  const defaultIntent = typeof data.default_intent === "string" ? data.default_intent : "Persuade";
+  const defaultAudience = typeof data.default_audience === "string" ? data.default_audience : "LinkedIn Connections";
+  const defaultPlatform = typeof data.default_platform === "string" ? data.default_platform : "LinkedIn Post";
 
-  const isDark = settings.is_dark ?? false;
-  const fontSize = Math.min(Math.max(settings.font_size ?? 18, 10), 32);
-  const defaultMode = settings.default_mode ?? "CLARITY";
-  const defaultIntent = settings.default_intent ?? "Persuade";
-  const defaultAudience = settings.default_audience ?? "LinkedIn Connections";
-  const defaultPlatform = settings.default_platform ?? "LinkedIn Post";
+  const values = {
+    userId,
+    isDark,
+    fontSize,
+    defaultMode,
+    defaultIntent,
+    defaultAudience,
+    defaultPlatform,
+  };
 
-  // Atomic upsert -- no race condition
-  await sql`
-    INSERT INTO settings (user_id, is_dark, font_size, default_mode, default_intent, default_audience, default_platform)
-    VALUES (${userId}, ${isDark}, ${fontSize}, ${defaultMode}, ${defaultIntent}, ${defaultAudience}, ${defaultPlatform})
-    ON CONFLICT (user_id) DO UPDATE SET
-      is_dark = ${isDark},
-      font_size = ${fontSize},
-      default_mode = ${defaultMode},
-      default_intent = ${defaultIntent},
-      default_audience = ${defaultAudience},
-      default_platform = ${defaultPlatform}
-  `;
+  await db
+    .insert(settings)
+    .values(values)
+    .onConflictDoUpdate({
+      target: settings.userId,
+      set: {
+        isDark,
+        fontSize,
+        defaultMode,
+        defaultIntent,
+        defaultAudience,
+        defaultPlatform,
+      },
+    });
 
   return (await getSettings(userId))!;
 }

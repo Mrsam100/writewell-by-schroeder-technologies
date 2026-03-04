@@ -1,5 +1,5 @@
-/** @license SPDX-License-Identifier: Apache-2.0 */
-import { getSql } from "../index";
+import { getDb } from "../index";
+import { usageStats } from "../schema";
 
 export async function logUsage(params: {
   userId: number | null;
@@ -9,10 +9,13 @@ export async function logUsage(params: {
   inputLength?: number;
   outputLength?: number;
 }): Promise<void> {
-  const sql = getSql();
-  await sql`
-    INSERT INTO usage_stats (user_id, action, mode, platform, input_length, output_length)
-    VALUES (${params.userId}, ${params.action}, ${params.mode || null}, ${params.platform || null},
-            ${params.inputLength || null}, ${params.outputLength || null})
-  `;
+  const db = getDb();
+  await db.insert(usageStats).values({
+    userId: params.userId,
+    action: params.action,
+    mode: params.mode || null,
+    platform: params.platform || null,
+    inputLength: params.inputLength || null,
+    outputLength: params.outputLength || null,
+  });
 }

@@ -5,22 +5,37 @@
 
 import type { AnalysisResult } from "../types";
 
-async function apiFetch<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-  const token = localStorage.getItem("writewell_token");
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+/** Read the CSRF token from the cookie */
+function getCsrfToken(): string {
+  const match = document.cookie.match(/(?:^|;\s*)writewell_csrf=([^;]+)/);
+  return match ? match[1] : "";
+}
 
-  const res = await fetch(`/api${endpoint}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+async function apiFetch<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-CSRF-Token": getCsrfToken(),
+  };
+
+  let res: Response;
+  try {
+    res = await fetch(`/api${endpoint}`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+  } catch (networkErr: any) {
+    throw new Error(`Network error: ${networkErr.message}. Is the server running?`);
+  }
+
   const text = await res.text();
+
   let data: any;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error(res.ok ? "Unexpected server response." : `Server error (${res.status}). Please try again.`);
+    throw new Error(`Server returned non-JSON (${res.status}): ${text.slice(0, 200)}`);
   }
   if (!res.ok) {
     throw new Error(data.error || `Request failed (${res.status})`);
