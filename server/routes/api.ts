@@ -26,33 +26,30 @@ api.post("/rewrite", optionalAuth, async (c) => {
     customVoice,
   });
 
-  // Save history + log usage before returning (Vercel kills the function after response)
+  // Fire-and-forget DB writes -- return the result immediately.
+  // On Vercel serverless these may be lost, but the alternative is a 504 timeout.
   const user = c.get("user");
-  try {
-    if (user) {
-      await addHistory({
-        userId: user.userId,
-        input: input.substring(0, 200),
-        inputFull: input,
-        output: result,
-        mode,
-        platform,
-        intent,
-        audience,
-        customVoice,
-      });
-    }
-    await logUsage({
-      userId: user?.userId ?? null,
-      action: "rewrite",
+  if (user) {
+    addHistory({
+      userId: user.userId,
+      input: input.substring(0, 200),
+      inputFull: input,
+      output: result,
       mode,
       platform,
-      inputLength: input.length,
-      outputLength: result.length,
-    });
-  } catch (dbErr) {
-    console.error("[DB] Failed to log rewrite:", (dbErr as Error).message);
+      intent,
+      audience,
+      customVoice,
+    }).catch((e) => console.error("[DB] history:", e.message));
   }
+  logUsage({
+    userId: user?.userId ?? null,
+    action: "rewrite",
+    mode,
+    platform,
+    inputLength: input.length,
+    outputLength: result.length,
+  }).catch((e) => console.error("[DB] usage:", e.message));
 
   return c.json({ result });
 });
@@ -67,17 +64,13 @@ api.post("/analyse", optionalAuth, async (c) => {
   const { input } = parsed.data;
   const result = await analyseText(input);
 
-  // Log usage before returning (Vercel kills the function after response)
+  // Fire-and-forget
   const user = c.get("user");
-  try {
-    await logUsage({
-      userId: user?.userId ?? null,
-      action: "analyse",
-      inputLength: input.length,
-    });
-  } catch (dbErr) {
-    console.error("[DB] Failed to log analysis:", (dbErr as Error).message);
-  }
+  logUsage({
+    userId: user?.userId ?? null,
+    action: "analyse",
+    inputLength: input.length,
+  }).catch((e) => console.error("[DB] usage:", e.message));
 
   return c.json({ result });
 });

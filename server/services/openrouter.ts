@@ -18,14 +18,14 @@ async function chatCompletion(
   let lastError: Error | null = null;
 
   for (const model of models) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const completion = await client.chat.completions.create({
           model,
           messages,
           temperature: 0.7,
           ...(options?.json ? { response_format: { type: "json_object" } } : {}),
-        });
+        }, { timeout: 8000 });
         return completion.choices[0]?.message?.content || "";
       } catch (err: any) {
         lastError = err;
@@ -33,9 +33,9 @@ async function chatCompletion(
         if (err.status && err.status >= 400 && err.status < 500 && err.status !== 429) {
           break; // Skip to next model
         }
-        // Exponential backoff: 500ms, 1s, 2s
-        if (attempt < 2) {
-          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+        // Brief backoff before retry
+        if (attempt < 1) {
+          await new Promise((r) => setTimeout(r, 300));
         }
       }
     }
