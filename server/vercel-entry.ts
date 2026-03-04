@@ -1,11 +1,7 @@
 import { handle } from "hono/vercel";
 import app from "./app";
-import { ensureSchema } from "./db/migrate";
 
-// Run schema init in background -- don't block requests.
-// Tables already exist; this is just a safety net.
-ensureSchema()
-  .then(() => console.log("[Vercel] Schema ready"))
-  .catch((err) => console.error("[Vercel] DB init failed:", err.message));
+// Tables already exist in Neon -- no need to run ensureSchema() on Vercel.
+// Skipping it avoids 12 DB queries on every cold start (saves 3-5s when Neon is cold).
 
 export default handle(app);
