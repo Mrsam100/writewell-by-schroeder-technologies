@@ -76,7 +76,7 @@ auth.post("/login", authRateLimit, async (c) => {
     return c.json({ error: "Invalid email or password." }, 401);
   }
 
-  const valid = await verifyPassword(password, user.passwordHash, user.id);
+  const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
     return c.json({ error: "Invalid email or password." }, 401);
   }
