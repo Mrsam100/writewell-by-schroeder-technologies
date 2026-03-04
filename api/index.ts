@@ -1,39 +1,27 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import app from "../server/app";
+import { initDb } from "../server/db/index";
 
-// Tell Vercel NOT to parse the body — let Express handle it
+// Tell Vercel not to pre-parse request body (let Express handle it)
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+  api: { bodyParser: false },
 };
 
-let app: any = null;
 let dbReady = false;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    // Dynamic imports so module-level crashes are caught by this try-catch
-    if (!app) {
-      const appMod = await import("../server/app");
-      app = appMod.default;
-    }
-
     if (!dbReady) {
-      const { initDb } = await import("../server/db/index");
       await initDb();
       dbReady = true;
     }
 
-    // Wrap in a promise so Express errors are caught
+    // Wrap Express in a promise to catch async errors
     await new Promise<void>((resolve, reject) => {
-      try {
-        app(req as any, res as any);
-        res.on("finish", resolve);
-        res.on("error", reject);
-      } catch (e) {
-        reject(e);
-      }
+      res.on("finish", resolve);
+      res.on("error", reject);
+      app(req as any, res as any);
     });
   } catch (err: any) {
     console.error("[Vercel Handler Error]", err?.message || err, err?.stack);
