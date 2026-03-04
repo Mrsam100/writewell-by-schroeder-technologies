@@ -44,6 +44,7 @@ app.use("/api/settings", csrfProtection);
 
 // Protected routes
 app.use("/api/history/*", requireAuth);
+app.use("/api/history", requireAuth);
 app.route("/api/history", historyRoutes);
 app.use("/api/settings/*", requireAuth);
 app.use("/api/settings", requireAuth);

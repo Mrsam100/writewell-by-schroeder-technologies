@@ -659,33 +659,31 @@ api.post("/rewrite", optionalAuth, async (c) => {
     customVoice
   });
   const user = c.get("user");
-  Promise.resolve().then(async () => {
-    try {
-      if (user) {
-        await addHistory({
-          userId: user.userId,
-          input: input.substring(0, 200),
-          inputFull: input,
-          output: result,
-          mode,
-          platform,
-          intent,
-          audience,
-          customVoice
-        });
-      }
-      await logUsage({
-        userId: user?.userId ?? null,
-        action: "rewrite",
+  try {
+    if (user) {
+      await addHistory({
+        userId: user.userId,
+        input: input.substring(0, 200),
+        inputFull: input,
+        output: result,
         mode,
         platform,
-        inputLength: input.length,
-        outputLength: result.length
+        intent,
+        audience,
+        customVoice
       });
-    } catch (dbErr) {
-      console.error("[DB] Failed to log rewrite:", dbErr.message);
     }
-  });
+    await logUsage({
+      userId: user?.userId ?? null,
+      action: "rewrite",
+      mode,
+      platform,
+      inputLength: input.length,
+      outputLength: result.length
+    });
+  } catch (dbErr) {
+    console.error("[DB] Failed to log rewrite:", dbErr.message);
+  }
   return c.json({ result });
 });
 api.post("/analyse", optionalAuth, async (c) => {
@@ -697,11 +695,15 @@ api.post("/analyse", optionalAuth, async (c) => {
   const { input } = parsed.data;
   const result = await analyseText(input);
   const user = c.get("user");
-  logUsage({
-    userId: user?.userId ?? null,
-    action: "analyse",
-    inputLength: input.length
-  }).catch((dbErr) => console.error("[DB] Failed to log analysis:", dbErr.message));
+  try {
+    await logUsage({
+      userId: user?.userId ?? null,
+      action: "analyse",
+      inputLength: input.length
+    });
+  } catch (dbErr) {
+    console.error("[DB] Failed to log analysis:", dbErr.message);
+  }
   return c.json({ result });
 });
 api.get("/health", (c) => {
@@ -816,6 +818,7 @@ app.use("/api/history", csrfProtection);
 app.use("/api/settings/*", csrfProtection);
 app.use("/api/settings", csrfProtection);
 app.use("/api/history/*", requireAuth);
+app.use("/api/history", requireAuth);
 app.route("/api/history", history_default);
 app.use("/api/settings/*", requireAuth);
 app.use("/api/settings", requireAuth);
