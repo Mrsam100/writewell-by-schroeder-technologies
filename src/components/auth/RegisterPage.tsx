@@ -10,7 +10,7 @@ export const RegisterPage = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, loginAsGuest } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,6 +84,13 @@ export const RegisterPage = () => {
             {loading ? "Creating account..." : "Create Account"}
           </button>
         </form>
+        <button
+          type="button"
+          onClick={() => { loginAsGuest(); navigate("/app"); }}
+          className="w-full py-3 rounded-full border-2 border-dashed border-gray-300 text-gray-500 font-mono text-[11px] uppercase tracking-widest font-bold hover:border-gray-400 hover:text-gray-700 transition-all"
+        >
+          Skip — Try as Guest
+        </button>
         <p className="text-center text-sm opacity-60">
           Already have an account?{" "}
           <Link to="/login" className="text-blue-500 font-medium hover:underline">
