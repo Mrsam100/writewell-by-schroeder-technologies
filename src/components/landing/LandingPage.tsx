@@ -7,15 +7,17 @@ import {
   Briefcase, PenTool, Megaphone, BarChart3, Code, Scale, Users,
   Menu, X, Star, Check, Mic
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { C, MODE_COLORS, MODES } from "../../constants";
 import { Logo } from "../common/Logo";
 import { LiveDemo } from "./LiveDemo";
 import { useGsapAnimations } from "../../hooks/useGsapAnimations";
+import { useAuth } from "../../contexts/AuthContext";
 
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const onLaunchApp = () => navigate("/app");
+  const { user } = useAuth();
+  const onLaunchApp = () => navigate(user ? "/app" : "/login");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [activeUseCase, setActiveUseCase] = useState(0);
   const landingRef = useRef<HTMLDivElement>(null);
@@ -61,12 +63,20 @@ export const LandingPage = () => {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
-          <button onClick={onLaunchApp} className="hidden sm:flex pill-btn pill-btn-outline text-[13px] py-2 px-5">
-            Try WriteWell
-          </button>
-          <button onClick={onLaunchApp} className="pill-btn pill-btn-lavender text-[13px] py-2 px-5 font-semibold">
-            Launch App
-          </button>
+          {user ? (
+            <button onClick={() => navigate("/app")} className="pill-btn pill-btn-lavender text-[13px] py-2 px-5 font-semibold">
+              Launch App
+            </button>
+          ) : (
+            <>
+              <Link to="/login" className="hidden sm:flex pill-btn pill-btn-outline text-[13px] py-2 px-5">
+                Sign In
+              </Link>
+              <Link to="/register" className="pill-btn pill-btn-lavender text-[13px] py-2 px-5 font-semibold">
+                Sign Up
+              </Link>
+            </>
+          )}
           <button onClick={() => setMobileMenu(!mobileMenu)} className="md:hidden p-2 rounded-full hover:bg-black/5">
             {mobileMenu ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -84,9 +94,18 @@ export const LandingPage = () => {
                 {["Features", "Pricing"].map(link => (
                   <a key={link} href={`#${link.toLowerCase()}`} className="text-[17px] font-medium py-2" onClick={() => setMobileMenu(false)}>{link}</a>
                 ))}
-                <button onClick={() => { onLaunchApp(); setMobileMenu(false); }} className="w-full py-3 rounded-full bg-[#d8b4fe] text-black font-semibold text-[15px] mt-2">
-                  Launch App
-                </button>
+                {user ? (
+                  <button onClick={() => { navigate("/app"); setMobileMenu(false); }} className="w-full py-3 rounded-full bg-[#d8b4fe] text-black font-semibold text-[15px] mt-2">
+                    Launch App
+                  </button>
+                ) : (
+                  <>
+                    <Link to="/login" onClick={() => setMobileMenu(false)} className="text-[17px] font-medium py-2">Sign In</Link>
+                    <Link to="/register" onClick={() => setMobileMenu(false)} className="w-full py-3 rounded-full bg-[#d8b4fe] text-black font-semibold text-[15px] mt-2 text-center block">
+                      Sign Up
+                    </Link>
+                  </>
+                )}
               </div>
             </motion.div>
           )}
