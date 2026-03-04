@@ -1,7 +1,6 @@
 node_modules/
 build/
 dist/
-api/index.mjs
 coverage/
 data/
 .DS_Store
