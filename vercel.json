@@ -1,6 +1,12 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 10,
+      "includeFiles": "node_modules/hono/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
