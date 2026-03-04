@@ -917,22 +917,8 @@ async function ensureSchema() {
 }
 
 // server/vercel-entry.ts
-var schemaReady = null;
-function warmup() {
-  if (!schemaReady) {
-    schemaReady = ensureSchema().catch((err) => {
-      console.error("[Vercel] DB init failed:", err.message);
-      schemaReady = null;
-      throw err;
-    });
-  }
-  return schemaReady;
-}
-var handler = (0, import_vercel.handle)(app_default);
-async function vercel_entry_default(req) {
-  await warmup();
-  return handler(req);
-}
+ensureSchema().then(() => console.log("[Vercel] Schema ready")).catch((err) => console.error("[Vercel] DB init failed:", err.message));
+var vercel_entry_default = (0, import_vercel.handle)(app_default);
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
