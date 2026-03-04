@@ -12,6 +12,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  loginAsGuest: () => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -108,6 +109,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("writewell_token", data.token);
   };
 
+  const loginAsGuest = () => {
+    skipMeRef.current = true;
+    setUser({ id: 0, email: "guest@writewell.test", name: "Test User" });
+    setToken("guest");
+    localStorage.setItem("writewell_token", "guest");
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -115,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, register, loginAsGuest, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
