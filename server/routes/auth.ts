@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { getSql } from "../db/index";
 import { config } from "../config";
 import { authenticate, type AuthPayload } from "../middleware/auth";
+import { authRateLimit } from "../middleware/rateLimit";
 
 const router = Router();
 
@@ -18,7 +19,7 @@ function normalizeEmail(raw: string): string {
 }
 
 // ── Register ────────────────────────────────────────────────────────────
-router.post("/register", async (req, res, next) => {
+router.post("/register", authRateLimit, async (req, res, next) => {
   try {
     const { password, name } = req.body;
     const rawEmail = req.body.email;
@@ -76,7 +77,7 @@ router.post("/register", async (req, res, next) => {
 // that would reveal whether an email is registered.
 const DUMMY_HASH = bcrypt.hashSync("dummy-password-for-timing", 12);
 
-router.post("/login", async (req, res, next) => {
+router.post("/login", authRateLimit, async (req, res, next) => {
   try {
     const { password } = req.body;
     const rawEmail = req.body.email;

@@ -15,11 +15,16 @@ async function apiFetch<T>(endpoint: string, body: Record<string, unknown>): Pro
     headers,
     body: JSON.stringify(body),
   });
+  const text = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(res.ok ? "Unexpected server response." : `Server error (${res.status}). Please try again.`);
+  }
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
     throw new Error(data.error || `Request failed (${res.status})`);
   }
-  const data = await res.json();
   return data.result;
 }
 

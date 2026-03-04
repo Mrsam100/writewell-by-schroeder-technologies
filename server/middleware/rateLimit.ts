@@ -37,5 +37,5 @@ function createLimiter(windowMs: number, maxRequests: number) {
 /** General API rate limit: 20 req/min */
 export const rateLimit = createLimiter(config.rateLimit.windowMs, config.rateLimit.maxRequests);
 
-/** Auth-specific brute-force protection: 5 attempts per 15 minutes */
-export const authRateLimit = createLimiter(15 * 60_000, 5);
+/** Auth-specific brute-force protection: 10 attempts per 15 minutes */
+export const authRateLimit = createLimiter(15 * 60_000, 10);

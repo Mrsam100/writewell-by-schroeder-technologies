@@ -6,16 +6,23 @@ let sql: NeonQueryFunction<false, false> | null = null;
 
 export function getSql() {
   if (sql) return sql;
+  if (!config.databaseUrl) {
+    throw new Error("DATABASE_URL is not configured. Set it in your environment variables.");
+  }
   sql = neon(config.databaseUrl);
   return sql;
 }
 
 let initPromise: Promise<void> | null = null;
 
-/** Idempotent, concurrency-safe schema init. */
+/** Idempotent, concurrency-safe schema init. Resets on failure so next call retries. */
 export function initDb(): Promise<void> {
   if (initPromise) return initPromise;
-  initPromise = doInitDb();
+  initPromise = doInitDb().catch((err) => {
+    // Reset so the next invocation retries instead of caching the failure
+    initPromise = null;
+    throw err;
+  });
   return initPromise;
 }
 

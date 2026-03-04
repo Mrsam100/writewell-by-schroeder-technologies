@@ -19,13 +19,17 @@ import {
   Trash2,
   Moon,
   Sun,
-  Type as TypeIcon,
   Download,
   XCircle,
   FileText,
   ShieldCheck,
   Activity,
   Layers,
+  Menu,
+  X,
+  Home,
+  LogOut,
+  PenLine,
 } from "lucide-react";
 
 import { C, MODE_COLORS, MODES, INTENTS, AUDIENCES, PLATFORMS } from "../../constants";
@@ -37,7 +41,12 @@ import { scoreColor } from "../../utils/scoring";
 import { useTheme } from "../../hooks/useTheme";
 import { useHistory } from "../../hooks/useHistory";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
+import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import type { AnalysisResult, AnalysisIssue } from "../../types";
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+const TABS = ["write", "output", "analysis", "issues"] as const;
 
 export const AppView = () => {
   const [input, setInput] = useState("");
@@ -49,7 +58,7 @@ export const AppView = () => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [analysing, setAnalysing] = useState(false);
-  const [activePanel, setActivePanel] = useState("rewrite");
+  const [activeTab, setActiveTab] = useState<typeof TABS[number]>("write");
   const [copyState, setCopyState] = useState("Copy");
   const [showHistory, setShowHistory] = useState(false);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -58,24 +67,26 @@ export const AppView = () => {
   const [showCompare, setShowCompare] = useState(false);
   const [originalInput, setOriginalInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { isDark, setIsDark, theme } = useTheme();
   const { history, setHistory, addToHistory } = useHistory();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const rewrite = useCallback(async () => {
     if (!input.trim() || loading) return;
     setLoading(true);
     setOutput("");
     setError(null);
-    setActivePanel("rewrite");
+    setActiveTab("output");
 
     try {
       setOriginalInput(input);
       const text = await rewriteText({ input, mode, intent, audience, platform, customVoice });
       setOutput(text);
 
-      // Save to history
       const item = {
         id: Date.now(),
         input: input.slice(0, 150),
@@ -105,7 +116,7 @@ export const AppView = () => {
     if (isModal) {
       setShowAnalysisModal(true);
     } else {
-      setActivePanel("analysis");
+      setActiveTab("analysis");
     }
 
     try {
@@ -124,7 +135,7 @@ export const AppView = () => {
   const copyOutput = async () => {
     if (!output) return;
     try { await navigator.clipboard.writeText(output); } catch { /* noop */ }
-    setCopyState("Copied \u2713");
+    setCopyState("Copied!");
     setTimeout(() => setCopyState("Copy"), 2000);
   };
 
@@ -132,6 +143,7 @@ export const AppView = () => {
     if (output) {
       setInput(output);
       setOutput("");
+      setActiveTab("write");
     }
   };
 
@@ -142,504 +154,408 @@ export const AppView = () => {
   });
 
   return (
-    <>
-      {/* Fluid Background */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], x: [0, 100, 0], y: [0, 50, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full blur-[120px] opacity-20"
-          style={{ background: `radial-gradient(circle, ${MODE_COLORS[mode]} 0%, transparent 70%)` }}
-        />
-        <motion.div
-          animate={{ scale: [1.2, 1, 1.2], rotate: [0, -90, 0], x: [0, -100, 0], y: [0, -50, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] rounded-full blur-[120px] opacity-20"
-          style={{ background: `radial-gradient(circle, ${isDark ? '#5e72e4' : '#fb6340'} 0%, transparent 70%)` }}
-        />
-      </div>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: theme.bg, color: theme.text }}>
 
-      {/* Dynamic Styles */}
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
-        .glass {
-          background: ${isDark ? 'rgba(20, 20, 20, 0.4)' : 'rgba(255, 255, 255, 0.4)'};
-          backdrop-filter: blur(32px) saturate(200%);
-          -webkit-backdrop-filter: blur(32px) saturate(200%);
-          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
-        }
-        .glass-card {
-          background: ${isDark ? 'rgba(40, 40, 40, 0.2)' : 'rgba(255, 255, 255, 0.2)'};
-          backdrop-filter: blur(16px);
-          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
-          box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.02);
-        }
-        .glass-input {
-          background: ${isDark ? 'rgba(30, 30, 30, 0.3)' : 'rgba(255, 255, 255, 0.3)'};
-          backdrop-filter: blur(8px);
-          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-          border-radius: 12px;
-          padding: 6px 12px;
-          appearance: none;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        .glass-input:hover {
-          background: ${isDark ? 'rgba(50, 50, 50, 0.4)' : 'rgba(255, 255, 255, 0.5)'};
-        }
-        .glass-input:focus {
-          outline: none;
-          border-color: ${MODE_COLORS[mode]};
-          box-shadow: 0 0 0 2px ${MODE_COLORS[mode]}22;
-        }
-      `}</style>
-
-      {/* TOPBAR */}
-      <header className="h-16 glass flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 transition-all duration-500">
-        <div className="max-w-[1800px] mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-4 md:gap-8">
+      {/* ── TOPBAR ── */}
+      <header
+        className="h-14 flex items-center justify-between px-4 md:px-6 border-b shrink-0 z-40"
+        style={{ background: theme.bg, borderColor: theme.border }}
+      >
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden p-2 -ml-2 rounded-xl hover:bg-black/5 transition-colors"
+          >
+            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+          <div className="flex items-center gap-2.5">
+            <Logo size={28} />
             <div className="flex flex-col">
-              <span className="font-sans text-xl md:text-2xl font-bold tracking-tight leading-none">WriteWell</span>
-              <span className="font-mono text-[8px] tracking-[0.2em] uppercase opacity-40">by Schroeder Technologies</span>
-            </div>
-
-            <div className="hidden lg:flex border rounded-full p-1 transition-colors" style={{ background: theme.s1, borderColor: theme.border }}>
-              {MODES.map(m => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={`px-4 py-1.5 rounded-full font-mono text-[10px] tracking-wider uppercase transition-all duration-200 ${
-                    mode === m
-                      ? "bg-white text-black shadow-sm ring-1 ring-black/5"
-                      : "opacity-40 hover:opacity-60"
-                  }`}
-                  style={{
-                    color: mode === m ? MODE_COLORS[m] : theme.text,
-                    background: mode === m ? (isDark ? "#333" : "#fff") : "transparent",
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 border rounded-full p-1 transition-colors" style={{ background: theme.s1, borderColor: theme.border }}>
-              <button
-                onClick={() => setFontSize(Math.max(12, fontSize - 2))}
-                className="p-1.5 rounded-full hover:bg-black/5 transition-colors"
-                title="Decrease Font Size"
-              >
-                <TypeIcon size={14} className="scale-75" />
-              </button>
-              <span className="font-mono text-[10px] w-6 text-center">{fontSize}</span>
-              <button
-                onClick={() => setFontSize(Math.min(32, fontSize + 2))}
-                className="p-1.5 rounded-full hover:bg-black/5 transition-colors"
-                title="Increase Font Size"
-              >
-                <TypeIcon size={14} className="scale-125" />
-              </button>
-            </div>
-
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className="p-2 rounded-full hover:bg-black/5 transition-colors"
-              title="Toggle Dark Mode"
-            >
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="p-2 rounded-full hover:bg-black/5 opacity-60 transition-colors"
-              title="History"
-            >
-              <HistoryIcon size={20} />
-            </button>
-            <div className="hidden sm:flex items-center gap-2 px-4 py-1.5 rounded-full border transition-colors" style={{ background: theme.s1, borderColor: theme.border }}>
-              <div className="w-2 h-2 rounded-full" style={{ background: MODE_COLORS[mode] }} />
-              <span className="font-mono text-[10px] tracking-wider uppercase font-medium" style={{ color: MODE_COLORS[mode] }}>
-                {mode}
+              <span style={{ fontFamily: C.serif }} className="text-lg font-bold leading-tight tracking-tight">WriteWell</span>
+              <span className="font-mono text-[7px] tracking-[0.15em] uppercase leading-none" style={{ color: theme.dim }}>
+                by Schroeder Technologies
               </span>
             </div>
           </div>
         </div>
+
+        <div className="flex items-center gap-1.5">
+          <div className="hidden sm:flex items-center gap-0.5 rounded-full border px-1.5 py-0.5" style={{ borderColor: theme.border }}>
+            <button
+              onClick={() => setFontSize(Math.max(12, fontSize - 2))}
+              className="p-1 rounded-full hover:bg-black/5 transition-colors text-[11px] font-mono"
+              style={{ color: theme.dim }}
+            >
+              A-
+            </button>
+            <span className="font-mono text-[10px] w-5 text-center" style={{ color: theme.muted }}>{fontSize}</span>
+            <button
+              onClick={() => setFontSize(Math.min(32, fontSize + 2))}
+              className="p-1 rounded-full hover:bg-black/5 transition-colors text-[11px] font-mono font-bold"
+              style={{ color: theme.dim }}
+            >
+              A+
+            </button>
+          </div>
+
+          <button
+            onClick={() => setIsDark(!isDark)}
+            className="p-2 rounded-xl hover:bg-black/5 transition-colors"
+            title="Toggle theme"
+            style={{ color: theme.muted }}
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="p-2 rounded-xl hover:bg-black/5 transition-colors"
+            title="History (Ctrl+H)"
+            style={{ color: theme.muted }}
+          >
+            <HistoryIcon size={18} />
+          </button>
+
+          {user && (
+            <button
+              onClick={() => { logout(); navigate("/"); }}
+              className="p-2 rounded-xl hover:bg-black/5 transition-colors"
+              title="Logout"
+              style={{ color: theme.muted }}
+            >
+              <LogOut size={18} />
+            </button>
+          )}
+        </div>
       </header>
 
-      {/* MAIN CONTENT - left input, right output */}
-      <main className="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 min-h-[calc(100vh-64px)]">
+      {/* ── BODY ── */}
+      <div className="flex-1 flex overflow-hidden relative">
 
-        {/* LEFT: INPUT */}
-        <section className="flex flex-col border-r transition-colors" style={{ borderColor: theme.border }}>
-          {/* Context Controls */}
-          <div className="p-4 border-b flex flex-wrap gap-4 items-center transition-colors" style={{ background: `${theme.s1}88`, borderColor: theme.border }}>
-            <div className="flex items-center gap-2">
-              <Target size={14} className="opacity-40" />
-              <span className="font-mono text-[10px] uppercase opacity-40 tracking-wider">Intent</span>
-              <select
-                value={intent}
-                onChange={e => setIntent(e.target.value)}
-                className="glass-input text-xs font-medium"
-                style={{ color: theme.text }}
-              >
-                {INTENTS.map(i => <option key={i} value={i} style={{ background: theme.bg }}>{i}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <User size={14} className="opacity-40" />
-              <span className="font-mono text-[10px] uppercase opacity-40 tracking-wider">Audience</span>
-              <select
-                value={audience}
-                onChange={e => setAudience(e.target.value)}
-                className="glass-input text-xs font-medium"
-                style={{ color: theme.text }}
-              >
-                {AUDIENCES.map(a => <option key={a} value={a} style={{ background: theme.bg }}>{a}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe size={14} className="opacity-40" />
-              <span className="font-mono text-[10px] uppercase opacity-40 tracking-wider">Platform</span>
-              <select
-                value={platform}
-                onChange={e => setPlatform(e.target.value)}
-                className="glass-input text-xs font-medium"
-                style={{ color: theme.text }}
-              >
-                {PLATFORMS.map(p => <option key={p} value={p} style={{ background: theme.bg }}>{p}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Textarea */}
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Paste your writing here. An email, a LinkedIn post, a proposal, an article — any text you want made more powerful."
-              className="w-full h-full min-h-[300px] p-8 md:p-12 font-light leading-relaxed resize-none focus:outline-none placeholder:opacity-20 transition-all"
-              style={{ fontSize: `${fontSize}px`, background: "transparent", color: theme.text }}
+        {/* Mobile overlay */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
             />
-            <AnimatePresence>
-              {input.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-8 left-8 right-8 p-4 glass rounded-2xl border border-white/5 flex flex-col gap-3"
+          )}
+        </AnimatePresence>
+
+        {/* ── SIDEBAR ── */}
+        <aside
+          className={`
+            w-[260px] shrink-0 border-r flex flex-col overflow-y-auto z-40
+            fixed lg:relative top-14 lg:top-0 bottom-0 left-0
+            ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+            transition-transform duration-300 ease-out
+          `}
+          style={{ background: theme.bg, borderColor: theme.border }}
+        >
+          {/* Mode Selection */}
+          <div className="p-4 space-y-1.5">
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] block mb-3 px-1" style={{ color: theme.dim }}>
+              Rewrite Mode
+            </span>
+            {MODES.map(m => {
+              const active = mode === m;
+              const color = MODE_COLORS[m];
+              return (
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); setSidebarOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 group relative"
+                  style={{
+                    background: active ? `${color}15` : "transparent",
+                    color: active ? color : theme.text,
+                  }}
                 >
-                  <div className="flex items-center gap-2 opacity-40">
-                    <User size={12} />
-                    <span className="font-mono text-[9px] uppercase tracking-widest font-bold">Custom Brand Voice (Optional)</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={customVoice}
-                    onChange={e => setCustomVoice(e.target.value)}
-                    placeholder="e.g. 'Witty, slightly cynical, but deeply empathetic'"
-                    className="bg-transparent outline-none text-xs font-medium w-full"
-                    style={{ color: theme.text }}
+                  {active && (
+                    <motion.div
+                      layoutId="mode-indicator"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full"
+                      style={{ background: color }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200"
+                    style={{
+                      background: color,
+                      transform: active ? "scale(1.2)" : "scale(1)",
+                      boxShadow: active ? `0 0 8px ${color}50` : "none",
+                    }}
                   />
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <span className={`font-mono text-[11px] uppercase tracking-wider ${active ? "font-bold" : "font-medium opacity-50 group-hover:opacity-80"}`}>
+                    {m}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Error Message */}
+          <div className="mx-4 h-px" style={{ background: theme.border }} />
+
+          {/* Context Controls */}
+          <div className="p-4 space-y-4">
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] block px-1" style={{ color: theme.dim }}>
+              Context
+            </span>
+            {[
+              { icon: Target, label: "Intent", value: intent, setter: setIntent, options: INTENTS },
+              { icon: User, label: "Audience", value: audience, setter: setAudience, options: AUDIENCES },
+              { icon: Globe, label: "Platform", value: platform, setter: setPlatform, options: PLATFORMS },
+            ].map(({ icon: Icon, label, value, setter, options }) => (
+              <div key={label} className="space-y-1.5">
+                <label className="flex items-center gap-1.5 px-1">
+                  <Icon size={12} style={{ color: theme.dim }} />
+                  <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: theme.dim }}>{label}</span>
+                </label>
+                <select
+                  value={value}
+                  onChange={e => setter(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-[13px] font-medium outline-none transition-all border cursor-pointer appearance-none"
+                  style={{
+                    background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                    borderColor: theme.border,
+                    color: theme.text,
+                  }}
+                >
+                  {options.map(o => <option key={o} value={o} style={{ background: theme.bg }}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <div className="mx-4 h-px" style={{ background: theme.border }} />
+
+          {/* Custom Voice */}
+          <div className="p-4 space-y-1.5">
+            <label className="flex items-center gap-1.5 px-1">
+              <PenLine size={12} style={{ color: theme.dim }} />
+              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: theme.dim }}>Brand Voice</span>
+            </label>
+            <input
+              type="text"
+              value={customVoice}
+              onChange={e => setCustomVoice(e.target.value)}
+              placeholder="e.g. Witty yet empathetic"
+              className="w-full px-3 py-2 rounded-xl text-[13px] outline-none transition-all border"
+              style={{
+                background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                borderColor: theme.border,
+                color: theme.text,
+              }}
+            />
+          </div>
+
+          <div className="flex-1" />
+
+          <div className="p-4 border-t" style={{ borderColor: theme.border }}>
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-black/5 transition-colors w-full"
+            >
+              <Home size={14} style={{ color: theme.dim }} />
+              <span className="text-[12px] font-medium" style={{ color: theme.muted }}>Back to Home</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* ── MAIN ── */}
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* Tabs */}
+          <div className="h-12 flex items-center gap-1 px-4 md:px-6 border-b shrink-0" style={{ borderColor: theme.border }}>
+            <div className="flex items-center gap-1 p-0.5 rounded-full border" style={{ borderColor: theme.border, background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
+              {TABS.map(tab => {
+                const active = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className="relative px-4 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-200"
+                    style={{ color: active ? theme.text : theme.dim }}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="active-tab"
+                        className="absolute inset-0 rounded-full"
+                        style={{ background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    <span className={`relative z-10 ${active ? "font-bold" : "font-medium"}`}>
+                      {tab}
+                      {tab === "issues" && analysis?.issues && analysis.issues.length > 0 && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[7px] font-bold">
+                          {analysis.issues.length}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: `${MODE_COLORS[mode]}12` }}>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: MODE_COLORS[mode] }} />
+                <span className="font-mono text-[9px] uppercase tracking-wider font-bold" style={{ color: MODE_COLORS[mode] }}>{mode}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Error */}
           <AnimatePresence>
             {error && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="mx-6 mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3 text-red-500"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mx-4 md:mx-6 mt-3"
               >
-                <XCircle size={18} />
-                <span className="text-sm font-medium">{error}</span>
-                <button onClick={() => setError(null)} className="ml-auto opacity-60 hover:opacity-100">
-                  <Trash2 size={14} />
-                </button>
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3 text-red-500">
+                  <XCircle size={16} />
+                  <span className="text-[13px] font-medium flex-1">{error}</span>
+                  <button onClick={() => setError(null)} className="opacity-60 hover:opacity-100 shrink-0"><X size={14} /></button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Footer with word count and action buttons */}
-          <div className="p-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors" style={{ borderColor: theme.border }}>
-            <div className="flex items-center gap-4">
-              <span className="font-mono text-xs opacity-30">
-                {input.split(/\s+/).filter(Boolean).length} words &middot; {input.length} chars
-              </span>
-              {input && (
-                <button
-                  onClick={() => setInput("")}
-                  className="opacity-40 hover:text-red-500 transition-colors"
-                  title="Clear"
-                >
-                  <Trash2 size={18} />
-                </button>
-              )}
-            </div>
-            <div className="flex gap-3 w-full sm:w-auto">
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => analyse(true)}
-                disabled={!input.trim() || analysing}
-                className="flex-1 sm:flex-none px-6 py-3 rounded-full border font-mono text-[11px] uppercase tracking-widest font-semibold hover:bg-black/5 disabled:opacity-30 transition-all flex items-center justify-center gap-2 glass-card"
-                style={{ borderColor: theme.border }}
-              >
-                <Activity size={14} className={analysing ? "spin" : ""} />
-                {analysing ? "Scanning..." : "Quick Scan"}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => analyse(false)}
-                disabled={!input.trim() || analysing}
-                className="flex-1 sm:flex-none px-6 py-3 rounded-full border font-mono text-[11px] uppercase tracking-widest font-semibold hover:bg-black/5 disabled:opacity-30 transition-all flex items-center justify-center gap-2 glass-card"
-                style={{ borderColor: theme.border }}
-              >
-                <ShieldCheck size={14} className={analysing ? "spin text-blue-500" : "text-blue-500"} />
-                AI Audit
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={rewrite}
-                disabled={!input.trim() || loading}
-                className="flex-1 sm:flex-none px-8 py-3 rounded-full text-white font-mono text-[11px] uppercase tracking-widest font-semibold shadow-lg shadow-blue-500/20 disabled:opacity-30 transition-all relative overflow-hidden group"
-                style={{ background: input.trim() ? MODE_COLORS[mode] : "#ccc" }}
-              >
-                <motion.div
-                  className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"
-                />
-                <span className="relative z-10 flex items-center gap-2">
-                  {loading ? <Sparkles size={14} className="spin" /> : <Zap size={14} />}
-                  {loading ? "Rewriting..." : "Rewrite"}
-                </span>
-              </motion.button>
-            </div>
-          </div>
-        </section>
-
-        {/* RIGHT: OUTPUT */}
-        <section className="flex flex-col transition-colors" style={{ background: `${theme.s1}44` }}>
-          {/* Tabs */}
-          <div className="h-14 border-b flex items-center justify-between px-6 transition-colors" style={{ background: theme.bg, borderColor: theme.border }}>
-            <div className="flex items-center gap-8 h-full">
-              {["rewrite", "analysis", "issues"].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActivePanel(tab)}
-                  className={`h-full font-mono text-[10px] uppercase tracking-widest font-bold transition-all relative ${
-                    activePanel === tab ? "opacity-100" : "opacity-30 hover:opacity-50"
-                  }`}
-                >
-                  {tab}
-                  {tab === "issues" && analysis?.issues && analysis.issues.length > 0 && (
-                    <span className="ml-2 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[8px]">
-                      {analysis.issues.length}
-                    </span>
-                  )}
-                  {activePanel === tab && (
-                    <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: theme.text }} />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {output && (
-              <button
-                onClick={() => setShowCompare(!showCompare)}
-                className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono uppercase tracking-widest font-bold transition-all ${
-                  showCompare ? "bg-blue-500 text-white border-blue-500" : "opacity-40 hover:opacity-100"
-                }`}
-                style={!showCompare ? { borderColor: theme.border } : {}}
-              >
-                <Layers size={12} />
-                {showCompare ? "Exit Compare" : "Compare"}
-              </button>
-            )}
-          </div>
-
-          {/* Content area with AnimatePresence for tab switching */}
-          <div className={`flex-1 overflow-y-auto ${showCompare ? 'p-0' : 'p-8 md:p-12'}`}>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
             <AnimatePresence mode="wait">
-              {/* COMPARE VIEW */}
-              {showCompare ? (
-                <motion.div
-                  key="compare"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="h-full grid grid-cols-1 md:grid-cols-2 divide-x transition-colors"
-                  style={{ borderColor: theme.border }}
-                >
-                  <div className="p-8 md:p-12 space-y-6">
-                    <div className="flex items-center gap-2 opacity-30">
-                      <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Original Input</span>
+
+              {/* WRITE */}
+              {activeTab === "write" && (
+                <motion.div key="write" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="h-full flex flex-col">
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="Paste your writing here — an email, a LinkedIn post, a proposal, an article — any text you want made more powerful."
+                    className="flex-1 w-full p-6 md:p-10 font-light leading-relaxed resize-none focus:outline-none placeholder:opacity-20"
+                    style={{ fontSize: `${fontSize}px`, background: "transparent", color: theme.text }}
+                  />
+                  <div className="px-4 md:px-6 py-3 border-t flex items-center justify-between gap-4 shrink-0" style={{ borderColor: theme.border }}>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[11px]" style={{ color: theme.dim }}>
+                        {input.split(/\s+/).filter(Boolean).length} words · {input.length} chars
+                      </span>
+                      {input && (
+                        <button onClick={() => setInput("")} className="p-1 rounded-lg hover:bg-red-500/10 transition-colors" title="Clear">
+                          <Trash2 size={14} className="text-red-400" />
+                        </button>
+                      )}
                     </div>
-                    <div className="font-light leading-relaxed opacity-60 whitespace-pre-wrap" style={{ fontSize: `${fontSize}px`, color: theme.text }}>
-                      {originalInput || input}
-                    </div>
-                  </div>
-                  <div className="p-8 md:p-12 space-y-6 bg-blue-500/5">
-                    <div className="flex items-center gap-2 text-blue-500">
-                      <Sparkles size={12} />
-                      <span className="font-mono text-[10px] uppercase tracking-widest font-bold">WriteWell Output</span>
-                    </div>
-                    <div className="font-medium leading-relaxed markdown-body" style={{ fontSize: `${fontSize}px`, color: theme.text }}>
-                      <Markdown>{output}</Markdown>
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => analyse(true)}
+                        disabled={!input.trim() || analysing}
+                        className="px-4 py-2 rounded-full border font-mono text-[10px] uppercase tracking-wider font-semibold disabled:opacity-30 transition-all flex items-center gap-1.5"
+                        style={{ borderColor: theme.border, color: theme.text }}
+                      >
+                        <Activity size={13} className={analysing ? "animate-spin" : ""} />
+                        Quick Scan
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={rewrite}
+                        disabled={!input.trim() || loading}
+                        className="px-6 py-2 rounded-full font-mono text-[10px] uppercase tracking-wider font-bold disabled:opacity-30 transition-all flex items-center gap-1.5 text-white shadow-lg"
+                        style={{ background: input.trim() ? MODE_COLORS[mode] : theme.border, boxShadow: input.trim() ? `0 4px 20px ${MODE_COLORS[mode]}30` : "none" }}
+                      >
+                        {loading ? <Sparkles size={13} className="animate-spin" /> : <Zap size={13} />}
+                        {loading ? "Rewriting..." : "Rewrite"}
+                      </motion.button>
                     </div>
                   </div>
                 </motion.div>
-              ) : activePanel === "rewrite" ? (
-                /* REWRITE TAB */
-                <motion.div
-                  key="rewrite"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="h-full flex flex-col"
-                >
+              )}
+
+              {/* OUTPUT */}
+              {activeTab === "output" && (
+                <motion.div key="output" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="p-6 md:p-10">
                   {loading ? (
                     <div className="space-y-6">
-                      <div className="flex items-center gap-3 text-blue-500">
-                        <Sparkles className="spin" size={20} />
-                        <span className="font-mono text-xs uppercase tracking-widest font-bold">Intelligence at work...</span>
+                      <div className="flex items-center gap-3" style={{ color: MODE_COLORS[mode] }}>
+                        <Sparkles className="animate-spin" size={18} />
+                        <span className="font-mono text-[11px] uppercase tracking-wider font-bold">Transforming your text...</span>
                       </div>
                       <div className="space-y-4">
-                        <div className="h-4 rounded-full w-full animate-pulse" style={{ background: theme.border }} />
-                        <div className="h-4 rounded-full w-[90%] animate-pulse" style={{ background: theme.border }} />
-                        <div className="h-4 rounded-full w-[95%] animate-pulse" style={{ background: theme.border }} />
-                        <div className="h-4 rounded-full w-[80%] animate-pulse" style={{ background: theme.border }} />
+                        {[100, 90, 95, 80, 60].map((w, i) => (
+                          <div key={i} className="h-4 rounded-full animate-pulse" style={{ width: `${w}%`, background: theme.border }} />
+                        ))}
                       </div>
                     </div>
                   ) : output ? (
-                    <div className="space-y-8">
-                      <div className="flex items-center justify-between pb-6 border-b transition-colors" style={{ borderColor: theme.border }}>
-                        <div className="flex items-center gap-3">
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b" style={{ borderColor: theme.border }}>
+                        <div className="flex items-center gap-2.5">
                           <div className="w-2.5 h-2.5 rounded-full" style={{ background: MODE_COLORS[mode] }} />
-                          <span className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: MODE_COLORS[mode] }}>
-                            {mode} Transformation
-                          </span>
+                          <span className="font-mono text-[11px] uppercase tracking-wider font-bold" style={{ color: MODE_COLORS[mode] }}>{mode} Transformation</span>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setShowCompare(!showCompare)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold transition-all ${showCompare ? 'bg-blue-500 text-white border-blue-500' : 'hover:bg-black/5 glass-card'}`}
-                            style={!showCompare ? { borderColor: theme.border } : {}}
-                          >
-                            <Layers size={14} />
-                            Compare
+                        <div className="flex flex-wrap gap-1.5">
+                          <button onClick={() => setShowCompare(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono uppercase tracking-wider font-semibold hover:bg-black/5 transition-all" style={{ borderColor: theme.border }}>
+                            <Layers size={12} /> Compare
                           </button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => exportTXT(output)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold hover:bg-black/5 transition-all glass-card"
-                            style={{ borderColor: theme.border }}
-                          >
-                            <FileText size={14} />
-                            TXT
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => exportPDF(output, mode, platform, intent)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold hover:bg-black/5 transition-all glass-card"
-                            style={{ borderColor: theme.border }}
-                          >
-                            <Download size={14} />
-                            PDF
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={copyOutput}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold hover:opacity-80 transition-all shadow-lg"
-                            style={{ background: theme.text, color: theme.bg }}
-                          >
-                            {copyState === "Copy" ? <Copy size={14} /> : <Check size={14} />}
+                          <button onClick={() => exportTXT(output)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono uppercase tracking-wider font-semibold hover:bg-black/5 transition-all" style={{ borderColor: theme.border }}>
+                            <FileText size={12} /> TXT
+                          </button>
+                          <button onClick={() => exportPDF(output, mode, platform, intent)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono uppercase tracking-wider font-semibold hover:bg-black/5 transition-all" style={{ borderColor: theme.border }}>
+                            <Download size={12} /> PDF
+                          </button>
+                          <button onClick={copyOutput} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-bold transition-all text-white" style={{ background: theme.text }}>
+                            {copyState === "Copy" ? <Copy size={12} /> : <Check size={12} />}
                             {copyState}
-                          </motion.button>
-                        </div>
-                      </div>
-                      <div className="font-light leading-relaxed opacity-80 markdown-body" style={{ fontSize: `${fontSize}px` }}>
-                        {showCompare ? (
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                            <div className="space-y-4">
-                              <span className="font-mono text-[10px] uppercase tracking-widest opacity-40 font-bold block">Original</span>
-                              <div className="p-6 rounded-3xl bg-black/5 border border-black/5 italic opacity-60">
-                                {originalInput}
-                              </div>
-                            </div>
-                            <div className="space-y-4">
-                              <span className="font-mono text-[10px] uppercase tracking-widest text-blue-500 font-bold block">Transformed</span>
-                              <div className="p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10">
-                                <Markdown>{output}</Markdown>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <Markdown>{output}</Markdown>
-                        )}
-                      </div>
-                      <div className="pt-8 flex items-center justify-between border-t transition-colors" style={{ borderColor: theme.border }}>
-                        <div className="flex gap-3">
-                          <button
-                            onClick={useOutput}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-full border text-xs font-bold hover:bg-white/10 transition-all"
-                            style={{ borderColor: theme.border }}
-                          >
-                            <RotateCcw size={14} />
-                            Use as Input
                           </button>
                         </div>
-                        <span className="font-mono text-[10px] opacity-30 uppercase tracking-widest">
-                          Output: {output.length} chars
-                        </span>
+                      </div>
+                      <div className="font-light leading-relaxed markdown-body" style={{ fontSize: `${fontSize}px` }}>
+                        <Markdown>{output}</Markdown>
+                      </div>
+                      <div className="pt-5 flex items-center justify-between border-t" style={{ borderColor: theme.border }}>
+                        <button onClick={useOutput} className="flex items-center gap-2 px-4 py-2 rounded-full border text-[11px] font-mono uppercase tracking-wider font-semibold hover:bg-black/5 transition-all" style={{ borderColor: theme.border }}>
+                          <RotateCcw size={13} /> Use as Input
+                        </button>
+                        <span className="font-mono text-[10px]" style={{ color: theme.dim }}>{output.length} chars</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
-                      <Logo size={80} className="mb-6" />
-                      <h3 className="mt-6 font-sans text-2xl font-bold">Awaiting Input</h3>
-                      <p className="mt-2 text-sm max-w-xs">Your transformed writing will appear here once you click Rewrite.</p>
+                    <div className="h-[60vh] flex flex-col items-center justify-center text-center" style={{ color: theme.dim }}>
+                      <Logo size={64} className="mb-5 opacity-30" />
+                      <h3 style={{ fontFamily: C.serif }} className="text-2xl font-bold mb-2 opacity-40">Awaiting Input</h3>
+                      <p className="text-[13px] max-w-xs opacity-30">Write or paste your text in the Write tab, then hit Rewrite.</p>
                     </div>
                   )}
                 </motion.div>
-              ) : null}
+              )}
 
-              {/* ANALYSIS TAB */}
-              {activePanel === "analysis" && !showCompare && (
-                <motion.div
-                  key="analysis"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
+              {/* ANALYSIS */}
+              {activeTab === "analysis" && (
+                <motion.div key="analysis" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="p-6 md:p-10">
                   {analysing ? (
                     <div className="space-y-8">
                       <div className="flex items-center gap-3 text-amber-500">
-                        <Search className="spin" size={20} />
-                        <span className="font-mono text-xs uppercase tracking-widest font-bold">Deep scanning...</span>
+                        <Search className="animate-spin" size={18} />
+                        <span className="font-mono text-[11px] uppercase tracking-wider font-bold">Deep scanning...</span>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="h-24 rounded-2xl animate-pulse" style={{ background: theme.border }} />
-                        <div className="h-24 rounded-2xl animate-pulse" style={{ background: theme.border }} />
+                        {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: theme.border }} />)}
                       </div>
                     </div>
                   ) : analysis ? (
-                    <div className="space-y-10">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <h4 className="font-mono text-[10px] uppercase tracking-widest opacity-40">Performance Metrics</h4>
+                    <div className="space-y-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="space-y-1">
+                          <h4 className="font-mono text-[9px] uppercase tracking-[0.2em] mb-3" style={{ color: theme.dim }}>Performance Metrics</h4>
                           <Score label="Readability" value={analysis.readability} color={scoreColor(analysis.readability)} />
                           <Score label="Clarity" value={analysis.clarity} color={scoreColor(analysis.clarity)} />
                           <Score label="Authority" value={analysis.authority} color={scoreColor(analysis.authority)} />
@@ -651,166 +567,198 @@ export const AppView = () => {
                             { l: "Tone", v: analysis.detected_tone },
                             { l: "Words", v: analysis.word_count },
                             { l: "Sentences", v: analysis.sentence_count },
-                            { l: "Avg Sentence", v: `${analysis.avg_sentence_length?.toFixed(1)} w` },
+                            { l: "Avg Length", v: `${analysis.avg_sentence_length?.toFixed(1)} w` },
                             { l: "Passive Voice", v: analysis.passive_voice_count },
                           ].map(s => (
-                            <div key={s.l} className="p-4 rounded-2xl border shadow-sm transition-colors" style={{ background: theme.card, borderColor: theme.border }}>
-                              <span className="block font-mono text-[8px] uppercase tracking-widest opacity-40 mb-1">{s.l}</span>
+                            <div key={s.l} className="p-4 rounded-2xl border" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderColor: theme.border }}>
+                              <span className="block font-mono text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: theme.dim }}>{s.l}</span>
                               <span className="text-sm font-bold">{s.v}</span>
                             </div>
                           ))}
                         </div>
                       </div>
-
                       {analysis.banned_words?.length > 0 && (
-                        <div className="p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5">
-                          <div className="flex items-center gap-2 text-amber-600 mb-4">
-                            <AlertCircle size={16} />
-                            <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Buzzword Alert</span>
+                        <div className="p-5 rounded-2xl border border-amber-500/20 bg-amber-500/5">
+                          <div className="flex items-center gap-2 text-amber-600 mb-3">
+                            <AlertCircle size={14} />
+                            <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Buzzword Alert</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {analysis.banned_words.map(w => (
-                              <span key={w} className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-700 text-[10px] font-mono font-bold">
-                                {w}
-                              </span>
-                            ))}
+                            {analysis.banned_words.map(w => <span key={w} className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-700 text-[10px] font-mono font-bold">{w}</span>)}
                           </div>
-                          <p className="mt-4 text-[11px] opacity-60 italic">These words often signal corporate fluff. Consider replacing them with more direct language.</p>
                         </div>
                       )}
-
-                      <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {analysis.summary && (
-                          <div className="p-6 rounded-2xl border transition-colors" style={{ background: isDark ? "rgba(45,206,137,0.05)" : "#f0fdf4", borderColor: isDark ? "rgba(45,206,137,0.2)" : "#dcfce7" }}>
+                          <div className="p-5 rounded-2xl border" style={{ background: isDark ? "rgba(45,206,137,0.05)" : "#f0fdf4", borderColor: isDark ? "rgba(45,206,137,0.2)" : "#dcfce7" }}>
                             <div className="flex items-center gap-2 text-green-600 mb-2">
-                              <Check size={16} />
-                              <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Key Strength</span>
+                              <Check size={14} />
+                              <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Strength</span>
                             </div>
-                            <p className="text-sm leading-relaxed" style={{ color: isDark ? "#88ebbc" : "#166534" }}>{analysis.summary}</p>
+                            <p className="text-[13px] leading-relaxed" style={{ color: isDark ? "#88ebbc" : "#166534" }}>{analysis.summary}</p>
                           </div>
                         )}
                         {analysis.weakness && (
-                          <div className="p-6 rounded-2xl border transition-colors" style={{ background: isDark ? "rgba(245,54,92,0.05)" : "#fef2f2", borderColor: isDark ? "rgba(245,54,92,0.2)" : "#fee2e2" }}>
-                            <div className="flex items-center gap-2 text-red-600 mb-2">
-                              <AlertCircle size={16} />
-                              <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Critical Weakness</span>
+                          <div className="p-5 rounded-2xl border" style={{ background: isDark ? "rgba(245,54,92,0.05)" : "#fef2f2", borderColor: isDark ? "rgba(245,54,92,0.2)" : "#fee2e2" }}>
+                            <div className="flex items-center gap-2 text-red-500 mb-2">
+                              <AlertCircle size={14} />
+                              <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Weakness</span>
                             </div>
-                            <p className="text-sm leading-relaxed" style={{ color: isDark ? "#fca5a5" : "#991b1b" }}>{analysis.weakness}</p>
+                            <p className="text-[13px] leading-relaxed" style={{ color: isDark ? "#fca5a5" : "#991b1b" }}>{analysis.weakness}</p>
                           </div>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
-                      <Search size={64} strokeWidth={1} />
-                      <h3 className="mt-6 font-sans text-2xl font-bold">No Analysis</h3>
-                      <p className="mt-2 text-sm max-w-xs">Run an analysis to see deep insights into your writing style.</p>
+                    <div className="h-[60vh] flex flex-col items-center justify-center text-center" style={{ color: theme.dim }}>
+                      <Search size={48} strokeWidth={1} className="opacity-20 mb-4" />
+                      <h3 style={{ fontFamily: C.serif }} className="text-xl font-bold mb-2 opacity-40">No Analysis Yet</h3>
+                      <p className="text-[13px] max-w-xs opacity-30">Click "Quick Scan" to analyze your writing.</p>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => analyse(false)}
+                        disabled={!input.trim() || analysing}
+                        className="mt-6 px-5 py-2 rounded-full border font-mono text-[10px] uppercase tracking-wider font-semibold disabled:opacity-30 transition-all flex items-center gap-1.5"
+                        style={{ borderColor: theme.border }}
+                      >
+                        <ShieldCheck size={13} /> Run AI Audit
+                      </motion.button>
                     </div>
                   )}
                 </motion.div>
               )}
 
-              {/* ISSUES TAB */}
-              {activePanel === "issues" && !showCompare && (
-                <motion.div
-                  key="issues"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="space-y-4"
-                >
+              {/* ISSUES */}
+              {activeTab === "issues" && (
+                <motion.div key="issues" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="p-6 md:p-10">
                   {analysis?.issues && analysis.issues.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {analysis.issues.map((issue: AnalysisIssue, i: number) => (
                         <motion.div
                           key={i}
                           whileHover={{ y: -2 }}
-                          className="p-6 rounded-3xl border shadow-sm hover:shadow-xl transition-all group"
-                          style={{ background: theme.card, borderColor: theme.border }}
+                          className="p-5 rounded-2xl border transition-all hover:shadow-lg"
+                          style={{ background: isDark ? "rgba(255,255,255,0.03)" : "#fff", borderColor: theme.border }}
                         >
-                          <div className="flex justify-between items-start mb-6">
+                          <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-2">
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
                                 issue.type === "Grammar" ? "bg-red-500/10 text-red-500" :
                                 issue.type === "Clarity" ? "bg-amber-500/10 text-amber-500" :
                                 issue.type === "Tone" ? "bg-purple-500/10 text-purple-500" :
                                 "bg-blue-500/10 text-blue-500"
                               }`}>
-                                {issue.type === "Grammar" ? <AlertCircle size={16} /> :
-                                 issue.type === "Clarity" ? <Zap size={16} /> :
-                                 issue.type === "Tone" ? <User size={16} /> :
-                                 <ShieldCheck size={16} />}
+                                {issue.type === "Grammar" ? <AlertCircle size={14} /> :
+                                 issue.type === "Clarity" ? <Zap size={14} /> :
+                                 issue.type === "Tone" ? <User size={14} /> :
+                                 <ShieldCheck size={14} />}
                               </div>
-                              <span className="font-mono text-[10px] uppercase tracking-widest font-bold opacity-40">
-                                {issue.type}
-                              </span>
+                              <span className="font-mono text-[9px] uppercase tracking-wider font-bold" style={{ color: theme.dim }}>{issue.type}</span>
                             </div>
-                            <span className="text-[10px] opacity-20 font-mono italic max-w-[120px] truncate">&quot;{issue.text}&quot;</span>
+                            <span className="text-[10px] italic max-w-[120px] truncate" style={{ color: theme.dim }}>&quot;{issue.text}&quot;</span>
                           </div>
-                          <p className="text-sm font-medium leading-relaxed mb-6">{issue.suggestion}</p>
+                          <p className="text-[13px] font-medium leading-relaxed mb-4">{issue.suggestion}</p>
                           <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(issue.suggestion);
-                            }}
-                            className="w-full py-2 rounded-xl bg-black/5 hover:bg-black/10 text-[10px] font-mono uppercase tracking-widest font-bold transition-colors flex items-center justify-center gap-2"
+                            onClick={() => navigator.clipboard.writeText(issue.suggestion)}
+                            className="w-full py-2 rounded-xl text-[10px] font-mono uppercase tracking-wider font-bold transition-colors flex items-center justify-center gap-1.5 border"
+                            style={{ borderColor: theme.border, color: theme.muted }}
                           >
-                            <Copy size={12} />
-                            Copy Suggestion
+                            <Copy size={11} /> Copy Fix
                           </button>
                         </motion.div>
                       ))}
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center opacity-20 py-20">
-                      <Zap size={64} strokeWidth={1} />
-                      <h3 className="mt-6 font-sans text-2xl font-bold">All Clear</h3>
-                      <p className="mt-2 text-sm max-w-xs">No significant issues detected in your text.</p>
+                    <div className="h-[60vh] flex flex-col items-center justify-center text-center" style={{ color: theme.dim }}>
+                      <Zap size={48} strokeWidth={1} className="opacity-20 mb-4" />
+                      <h3 style={{ fontFamily: C.serif }} className="text-xl font-bold mb-2 opacity-40">All Clear</h3>
+                      <p className="text-[13px] max-w-xs opacity-30">No issues detected. Run an analysis to check for improvements.</p>
                     </div>
                   )}
                 </motion.div>
               )}
+
             </AnimatePresence>
           </div>
-        </section>
-      </main>
+        </main>
+      </div>
 
-      {/* ANALYSIS MODAL */}
+      {/* ── COMPARE MODAL ── */}
+      <AnimatePresence>
+        {showCompare && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCompare(false)} className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className="fixed inset-4 md:inset-8 z-[110] rounded-3xl overflow-hidden flex flex-col border shadow-2xl"
+              style={{ background: theme.bg, borderColor: theme.border }}
+            >
+              <div className="p-5 border-b flex items-center justify-between shrink-0" style={{ borderColor: theme.border }}>
+                <div className="flex items-center gap-2.5">
+                  <Layers size={18} style={{ color: MODE_COLORS[mode] }} />
+                  <h2 className="font-bold text-lg">Compare</h2>
+                </div>
+                <button onClick={() => setShowCompare(false)} className="p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <X size={20} style={{ color: theme.muted }} />
+                </button>
+              </div>
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 divide-x overflow-y-auto" style={{ borderColor: theme.border }}>
+                <div className="p-6 md:p-10 space-y-4">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold" style={{ color: theme.dim }}>Original</span>
+                  <div className="font-light leading-relaxed opacity-60 whitespace-pre-wrap" style={{ fontSize: `${fontSize}px` }}>{originalInput || input}</div>
+                </div>
+                <div className="p-6 md:p-10 space-y-4" style={{ background: `${MODE_COLORS[mode]}08` }}>
+                  <div className="flex items-center gap-2" style={{ color: MODE_COLORS[mode] }}>
+                    <Sparkles size={12} />
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold">Transformed</span>
+                  </div>
+                  <div className="font-medium leading-relaxed markdown-body" style={{ fontSize: `${fontSize}px` }}>
+                    <Markdown>{output}</Markdown>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── QUICK SCAN MODAL ── */}
       <AnimatePresence>
         {showAnalysisModal && (
           <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAnalysisModal(false)} className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" />
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowAnalysisModal(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl glass shadow-2xl z-[110] rounded-[32px] overflow-hidden flex flex-col"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className="fixed inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl z-[110] rounded-3xl overflow-hidden flex flex-col border shadow-2xl"
+              style={{ background: theme.bg, borderColor: theme.border }}
             >
-              <div className="p-8 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
-                <div className="flex items-center gap-3">
-                  <Activity className="text-blue-500" />
-                  <h2 className="font-sans text-2xl font-bold">Quick Scan Results</h2>
+              <div className="p-6 border-b flex items-center justify-between shrink-0" style={{ borderColor: theme.border }}>
+                <div className="flex items-center gap-2.5">
+                  <Activity className="text-blue-500" size={18} />
+                  <h2 className="font-bold text-lg">Quick Scan</h2>
                 </div>
-                <button onClick={() => setShowAnalysisModal(false)} className="p-2 rounded-full hover:bg-black/5">
-                  <XCircle size={24} />
+                <button onClick={() => setShowAnalysisModal(false)} className="p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <X size={20} style={{ color: theme.muted }} />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {analysing ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <Activity className="spin text-blue-500" size={48} />
-                    <p className="font-mono text-xs uppercase tracking-widest opacity-40">Scanning your writing...</p>
+                  <div className="flex flex-col items-center justify-center py-16 gap-4">
+                    <Activity className="animate-spin text-blue-500" size={40} />
+                    <p className="font-mono text-[11px] uppercase tracking-wider" style={{ color: theme.dim }}>Scanning...</p>
                   </div>
                 ) : analysis ? (
-                  <div className="space-y-10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-2">
-                        <h4 className="font-mono text-[10px] uppercase tracking-widest opacity-40">Performance Metrics</h4>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <h4 className="font-mono text-[9px] uppercase tracking-[0.2em] mb-3" style={{ color: theme.dim }}>Metrics</h4>
                         <Score label="Readability" value={analysis.readability} color={scoreColor(analysis.readability)} />
                         <Score label="Clarity" value={analysis.clarity} color={scoreColor(analysis.clarity)} />
                         <Score label="Authority" value={analysis.authority} color={scoreColor(analysis.authority)} />
@@ -822,62 +770,51 @@ export const AppView = () => {
                           { l: "Tone", v: analysis.detected_tone },
                           { l: "Words", v: analysis.word_count },
                           { l: "Sentences", v: analysis.sentence_count },
-                          { l: "Avg Sentence", v: `${analysis.avg_sentence_length?.toFixed(1)} w` },
-                          { l: "Passive Voice", v: analysis.passive_voice_count },
+                          { l: "Avg Length", v: `${analysis.avg_sentence_length?.toFixed(1)} w` },
+                          { l: "Passive", v: analysis.passive_voice_count },
                         ].map(s => (
-                          <div key={s.l} className="p-4 rounded-2xl border shadow-sm glass-card">
-                            <span className="block font-mono text-[8px] uppercase tracking-widest opacity-40 mb-1">{s.l}</span>
+                          <div key={s.l} className="p-3 rounded-xl border" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderColor: theme.border }}>
+                            <span className="block font-mono text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: theme.dim }}>{s.l}</span>
                             <span className="text-sm font-bold">{s.v}</span>
                           </div>
                         ))}
                       </div>
                     </div>
-
                     {analysis.banned_words?.length > 0 && (
-                      <div className="p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5">
-                        <div className="flex items-center gap-2 text-amber-600 mb-4">
-                          <AlertCircle size={16} />
-                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Buzzword Alert</span>
+                      <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                        <div className="flex items-center gap-2 text-amber-600 mb-2">
+                          <AlertCircle size={14} />
+                          <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Buzzwords</span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          {analysis.banned_words.map(w => (
-                            <span key={w} className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-700 text-[10px] font-mono font-bold">
-                              {w}
-                            </span>
-                          ))}
+                        <div className="flex flex-wrap gap-1.5">
+                          {analysis.banned_words.map(w => <span key={w} className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 text-[10px] font-mono font-bold">{w}</span>)}
                         </div>
                       </div>
                     )}
-                    <div className="space-y-4">
-                      {analysis.summary && (
-                        <div className="p-6 rounded-2xl border glass-card" style={{ borderColor: isDark ? "rgba(45,206,137,0.2)" : "#dcfce7" }}>
-                          <div className="flex items-center gap-2 text-green-600 mb-2">
-                            <Check size={16} />
-                            <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Key Strength</span>
-                          </div>
-                          <p className="text-sm leading-relaxed">{analysis.summary}</p>
+                    {analysis.summary && (
+                      <div className="p-4 rounded-xl border" style={{ background: isDark ? "rgba(45,206,137,0.05)" : "#f0fdf4", borderColor: isDark ? "rgba(45,206,137,0.2)" : "#dcfce7" }}>
+                        <div className="flex items-center gap-2 text-green-600 mb-1.5">
+                          <Check size={14} />
+                          <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Strength</span>
                         </div>
-                      )}
-                      {analysis.weakness && (
-                        <div className="p-6 rounded-2xl border glass-card" style={{ borderColor: isDark ? "rgba(245,54,92,0.2)" : "#fee2e2" }}>
-                          <div className="flex items-center gap-2 text-red-600 mb-2">
-                            <AlertCircle size={16} />
-                            <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Critical Weakness</span>
-                          </div>
-                          <p className="text-sm leading-relaxed">{analysis.weakness}</p>
+                        <p className="text-[13px] leading-relaxed" style={{ color: isDark ? "#88ebbc" : "#166534" }}>{analysis.summary}</p>
+                      </div>
+                    )}
+                    {analysis.weakness && (
+                      <div className="p-4 rounded-xl border" style={{ background: isDark ? "rgba(245,54,92,0.05)" : "#fef2f2", borderColor: isDark ? "rgba(245,54,92,0.2)" : "#fee2e2" }}>
+                        <div className="flex items-center gap-2 text-red-500 mb-1.5">
+                          <AlertCircle size={14} />
+                          <span className="font-mono text-[9px] uppercase tracking-wider font-bold">Weakness</span>
                         </div>
-                      )}
-                    </div>
+                        <p className="text-[13px] leading-relaxed" style={{ color: isDark ? "#fca5a5" : "#991b1b" }}>{analysis.weakness}</p>
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </div>
-              <div className="p-6 border-t flex justify-end" style={{ borderColor: theme.border }}>
-                <button
-                  onClick={() => setShowAnalysisModal(false)}
-                  className="px-8 py-3 rounded-full bg-black text-white font-mono text-[11px] uppercase tracking-widest font-bold"
-                  style={{ background: theme.text, color: theme.bg }}
-                >
-                  Close Scan
+              <div className="p-4 border-t shrink-0" style={{ borderColor: theme.border }}>
+                <button onClick={() => setShowAnalysisModal(false)} className="w-full py-2.5 rounded-full font-mono text-[10px] uppercase tracking-wider font-bold transition-all" style={{ background: theme.text, color: theme.bg }}>
+                  Close
                 </button>
               </div>
             </motion.div>
@@ -885,32 +822,26 @@ export const AppView = () => {
         )}
       </AnimatePresence>
 
-      {/* HISTORY DRAWER */}
+      {/* ── HISTORY DRAWER ── */}
       <AnimatePresence>
         {showHistory && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowHistory(false)}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
-            />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHistory(false)} className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]" />
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 bottom-0 w-full max-w-md shadow-2xl z-[70] flex flex-col transition-colors"
-              style={{ background: theme.bg }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-sm shadow-2xl z-[70] flex flex-col border-l"
+              style={{ background: theme.bg, borderColor: theme.border }}
             >
-              <div className="p-6 border-b flex items-center justify-between transition-colors" style={{ borderColor: theme.border }}>
-                <h2 className="font-sans text-xl font-bold">History</h2>
-                <button onClick={() => setShowHistory(false)} className="p-2 rounded-full hover:bg-black/5">
-                  <ChevronRight size={20} />
+              <div className="p-5 border-b flex items-center justify-between shrink-0" style={{ borderColor: theme.border }}>
+                <h2 className="font-bold text-lg">History</h2>
+                <button onClick={() => setShowHistory(false)} className="p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <ChevronRight size={18} style={{ color: theme.muted }} />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {history.map(h => (
                   <button
                     key={h.id}
@@ -919,36 +850,44 @@ export const AppView = () => {
                       setOutput(h.output);
                       setMode(h.mode);
                       setShowHistory(false);
-                      setActivePanel("rewrite");
+                      setActiveTab("output");
                     }}
-                    className="w-full text-left p-5 rounded-2xl border hover:bg-black/5 transition-all group glass-card relative overflow-hidden"
+                    className="w-full text-left p-4 rounded-2xl border hover:bg-black/[0.02] transition-all relative overflow-hidden"
                     style={{ borderColor: theme.border }}
                   >
-                    <div className="absolute top-0 left-0 w-1 h-full" style={{ background: MODE_COLORS[h.mode] }} />
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="absolute top-0 left-0 w-[3px] h-full rounded-r-full" style={{ background: MODE_COLORS[h.mode] }} />
+                    <div className="flex justify-between items-center mb-2 pl-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full bg-black/5" style={{ color: MODE_COLORS[h.mode] }}>
-                          {h.mode}
-                        </span>
-                        <span className="font-mono text-[8px] opacity-30 uppercase tracking-tighter">{h.platform || 'General'}</span>
+                        <span className="font-mono text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full" style={{ color: MODE_COLORS[h.mode], background: `${MODE_COLORS[h.mode]}12` }}>{h.mode}</span>
+                        <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: theme.dim }}>{h.platform || "General"}</span>
                       </div>
-                      <span className="text-[9px] opacity-30">{h.date}</span>
+                      <span className="text-[9px]" style={{ color: theme.dim }}>{h.date}</span>
                     </div>
-                    <p className="text-xs font-medium opacity-80 line-clamp-1 mb-1">{h.input.slice(0, 50)}...</p>
-                    <p className="text-[10px] opacity-40 line-clamp-2 leading-relaxed italic">&quot;{h.output.slice(0, 100)}...&quot;</p>
+                    <p className="text-[12px] font-medium line-clamp-1 mb-0.5 pl-2" style={{ opacity: 0.8 }}>{h.input.slice(0, 60)}...</p>
+                    <p className="text-[11px] line-clamp-2 leading-relaxed italic pl-2" style={{ color: theme.dim }}>&quot;{h.output.slice(0, 80)}...&quot;</p>
                   </button>
                 ))}
                 {history.length === 0 && (
-                  <div className="text-center py-20 opacity-20">
-                    <HistoryIcon size={48} className="mx-auto mb-4" />
-                    <p className="text-sm">No history yet</p>
+                  <div className="text-center py-20" style={{ color: theme.dim }}>
+                    <HistoryIcon size={40} className="mx-auto mb-3 opacity-20" />
+                    <p className="text-[13px] opacity-40">No history yet</p>
                   </div>
                 )}
               </div>
+              {history.length > 0 && (
+                <div className="p-3 border-t shrink-0" style={{ borderColor: theme.border }}>
+                  <button
+                    onClick={() => setHistory([])}
+                    className="w-full py-2 rounded-xl text-[10px] font-mono uppercase tracking-wider font-semibold transition-colors flex items-center justify-center gap-1.5 text-red-400 hover:bg-red-500/10"
+                  >
+                    <Trash2 size={12} /> Clear All
+                  </button>
+                </div>
+              )}
             </motion.div>
           </>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 };

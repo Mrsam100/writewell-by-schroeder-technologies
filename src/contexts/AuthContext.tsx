@@ -24,6 +24,19 @@ export const useAuth = () => {
   return ctx;
 };
 
+/** Safely parse JSON from a response. Returns parsed data or throws with a readable error. */
+async function safeJson(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Server returned non-JSON (e.g. Vercel error page)
+    throw new Error(
+      res.ok ? "Unexpected server response." : `Server error (${res.status}). Please try again.`
+    );
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("writewell_token"));
@@ -50,7 +63,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     fetch("/api/auth/me", {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(async r => {
+        if (!r.ok) throw new Error();
+        return safeJson(r);
+      })
       .then(data => { if (!cancelled) setUser(data.user); })
       .catch(() => {
         if (!cancelled) {
@@ -70,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || "Login failed");
     skipMeRef.current = true;
     setUser(data.user);
@@ -84,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, name }),
     });
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) throw new Error(data.error || "Registration failed");
     skipMeRef.current = true;
     setUser(data.user);
